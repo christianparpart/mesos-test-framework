@@ -1,0 +1,14 @@
+# cmake files
+/CMakeCache.txt
+/CMakeFiles/
+/Makefile
+/cmake_install.cmake
+/src/CMakeFiles/
+/src/Makefile
+/src/cmake_install.cmake
+/src/my-executor
+/src/my-scheduler
+/src/sysconfig.h
+
+# vim temporaries
+.*.sw?
