@@ -1,8 +1,10 @@
+#include <mesos/mesos.hpp>
 #include <mesos/scheduler.hpp>
-#include <mesos/resources.hpp>
+//#include <mesos/resources.hpp>
 #include <boost/lexical_cast.hpp>
 #include <iostream>
 #include <memory>
+#include <vector>
 
 using std::cout;
 using std::clog;
@@ -62,10 +64,12 @@ void MyScheduler::disconnected(SchedulerDriver* driver)
 void MyScheduler::resourceOffers(SchedulerDriver* driver, const std::vector<Offer>& offers)
 {
     clog << "resourceOffers! Resources has been offered to us" << endl;
-
+#if 0
     static const Resources TASK_RESOURCES = Resources::parse(
         "cpus:" + stringify(CPUS_PER_TASK) +
         ";mem:" + stringify(MEM_PER_TASK)).get();
+
+    int totalTasks = 32;
 
     for (size_t i = 0; i < offers.size(); i++) {
         const Offer& offer = offers[i];
@@ -88,7 +92,7 @@ void MyScheduler::resourceOffers(SchedulerDriver* driver, const std::vector<Offe
 
         driver->launchTasks(offer.id(), tasks);
     }
-
+#endif
 }
 
 void MyScheduler::offerRescinded(SchedulerDriver* driver, const OfferID& offerId)
@@ -133,14 +137,14 @@ int main(int argc, const char* argv[])
     executor.set_name("My Test Executor (C++)");
     executor.set_source("my_test_source");
 
-    Scheduler* scheduler = new MyScheduler(executor, role);
+    std::unique_ptr<Scheduler> scheduler(new MyScheduler(executor, role));
 
     FrameworkInfo framework;
     framework.set_user(""); // Have Mesos fill in the current user.
     framework.set_name("Test Framework (C++)");
     framework.set_role(role);
 
-    std::unique_ptr<MesosSchedulerDriver> driver(new MesosSchedulerDriver(scheduler, framework, master));
+    std::unique_ptr<MesosSchedulerDriver> driver(new MesosSchedulerDriver(scheduler.get(), framework, master));
 
     driver->run();
 
