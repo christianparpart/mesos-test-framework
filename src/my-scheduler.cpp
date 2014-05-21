@@ -1,6 +1,6 @@
 #include <mesos/mesos.hpp>
 #include <mesos/scheduler.hpp>
-//#include <mesos/resources.hpp>
+#include <mesos/resources.hpp>
 #include <boost/lexical_cast.hpp>
 #include <iostream>
 #include <memory>
@@ -10,8 +10,12 @@ using std::cout;
 using std::clog;
 using std::endl;
 using std::string;
+using std::vector;
 using boost::lexical_cast;
 using namespace mesos;
+
+const int CPUS_PER_TASK = 1;
+const int MEM_PER_TASK = 64;
 
 class MyScheduler : public Scheduler {
 public:
@@ -63,46 +67,51 @@ void MyScheduler::disconnected(SchedulerDriver* driver)
 
 void MyScheduler::resourceOffers(SchedulerDriver* driver, const std::vector<Offer>& offers)
 {
-    clog << "resourceOffers! Resources has been offered to us" << endl;
-#if 0
+    clog << "Resource offers received" << endl;
+
     static const Resources TASK_RESOURCES = Resources::parse(
         "cpus:" + stringify(CPUS_PER_TASK) +
         ";mem:" + stringify(MEM_PER_TASK)).get();
 
-    int totalTasks = 32;
+    int totalTasks = 0xFFFF;
 
     for (size_t i = 0; i < offers.size(); i++) {
         const Offer& offer = offers[i];
         vector<TaskInfo> tasks;
         Resources remaining = offer.resources();
 
-        while (tasksLaunched_ < totalTasks &&
-               TASK_RESOURCES <= remaining.flatten()) {
+        while (tasksLaunched_ < totalTasks && TASK_RESOURCES <= remaining.flatten()) {
             int taskId = tasksLaunched_++;
 
-            printf("offer[%zu].hostname = '%s'\n", i, offer.hostname().c_str());
+            clog << "Starting task " << taskId << " on " << offer.hostname() << endl;
 
-            // schedule a task on given offer's slave
+            // create a task
             TaskInfo task;
             task.set_name("Task " + lexical_cast<string>(taskId));
             task.mutable_task_id()->set_value(lexical_cast<string>(taskId));
             task.mutable_slave_id()->MergeFrom(offer.slave_id());
             task.mutable_executor()->MergeFrom(executor_);
+
+            // assigning resources this task may use
+            Option<Resources> resources = remaining.find(TASK_RESOURCES, role_);
+            task.mutable_resources()->MergeFrom(resources.get());
+            remaining -= resources.get();
+
+            tasks.push_back(task);
         }
 
         driver->launchTasks(offer.id(), tasks);
     }
-#endif
 }
 
 void MyScheduler::offerRescinded(SchedulerDriver* driver, const OfferID& offerId)
 {
-    clog << "offerRescinded!" << endl;
+    clog << "Offer " << offerId.value() << " rescinded!" << endl;
 }
 
 void MyScheduler::statusUpdate(SchedulerDriver* driver, const TaskStatus& status)
 {
-    clog << "statusUpdate!" << endl;
+    clog << "statusUpdate for task " << status.task_id().value() << ": " << status.message() << endl;
 }
 
 void MyScheduler::frameworkMessage(SchedulerDriver* driver, const ExecutorID& executorId, const SlaveID& slaveId, const std::string& data)
@@ -112,12 +121,12 @@ void MyScheduler::frameworkMessage(SchedulerDriver* driver, const ExecutorID& ex
 
 void MyScheduler::slaveLost(SchedulerDriver* driver, const SlaveID& slaveId)
 {
-    clog << "slaveLost!" << endl;
+    clog << "Slave " << slaveId.value() << " lost!" << endl;
 }
 
 void MyScheduler::executorLost(SchedulerDriver* driver, const ExecutorID& executorId, const SlaveID& slaveId, int status)
 {
-    clog << "executorLost!" << endl;
+    clog << "Executor " << executorId.value() << " lost! status=" << status << endl;
 }
 
 void MyScheduler::error(SchedulerDriver* driver, const std::string& message)
@@ -129,7 +138,7 @@ void MyScheduler::error(SchedulerDriver* driver, const std::string& message)
 int main(int argc, const char* argv[])
 {
     string role = "*";
-    std::string master = "127.0.0.1:5050";
+    std::string master = "192.168.122.120:5050"; // "127.0.0.1:5050";
 
     ExecutorInfo executor;
     executor.mutable_executor_id()->set_value("default");
@@ -146,9 +155,7 @@ int main(int argc, const char* argv[])
 
     std::unique_ptr<MesosSchedulerDriver> driver(new MesosSchedulerDriver(scheduler.get(), framework, master));
 
-    driver->run();
-
-    int status = driver->stop();
+    int status = driver->run();
 
     return status == mesos::DRIVER_STOPPED ? 0 : 1;
 }

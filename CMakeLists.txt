@@ -22,9 +22,10 @@ set(MESOS_LIBRARY_DIR /opt/mesos/lib CACHE PATH "Mesos library dir")
 set(MESOS_LIBRARIES mesos CACHE STRING "Mesos library (ldflags)")
 set(MESOS_CPPFLAGS CACHE STRING "Mesos C preprocessor flags")
 
+link_directories(${MESOS_LIBRARY_DIR})
 include_directories(${MESOS_INCLUDE_DIR})
 include_directories(${MESOS_INCLUDE_DIR}/mesos)
-link_directories(${MESOS_LIBRARY_DIR})
+include_directories(${CMAKE_SOURCE_DIR}/3rdparty/stout/include)
 
 add_definitions(-Wall -Wno-variadic-macros)
 
