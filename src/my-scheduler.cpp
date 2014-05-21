@@ -142,7 +142,7 @@ int main(int argc, const char* argv[])
 
     ExecutorInfo executor;
     executor.mutable_executor_id()->set_value("default");
-    executor.mutable_command()->set_value("/home/trapni/projects/mesos-test-framework/my-executor");
+    executor.mutable_command()->set_value("/home/trapni/my-executor");
     executor.set_name("My Test Executor (C++)");
     executor.set_source("my_test_source");
 

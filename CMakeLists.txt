@@ -17,8 +17,8 @@ include(CMakeDetermineCCompiler)
 
 set(CMAKE_CXX_FLAGS "-std=c++11")
 
-set(MESOS_INCLUDE_DIR /opt/mesos/include CACHE PATH "Mesos include dir")
-set(MESOS_LIBRARY_DIR /opt/mesos/lib CACHE PATH "Mesos library dir")
+set(MESOS_INCLUDE_DIR /usr/local/include CACHE PATH "Mesos include dir")
+set(MESOS_LIBRARY_DIR /usr/local/lib CACHE PATH "Mesos library dir")
 set(MESOS_LIBRARIES mesos CACHE STRING "Mesos library (ldflags)")
 set(MESOS_CPPFLAGS CACHE STRING "Mesos C preprocessor flags")
 
