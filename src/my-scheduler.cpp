@@ -5,6 +5,7 @@
 #include <iostream>
 #include <memory>
 #include <vector>
+#include <unistd.h>
 
 using std::cout;
 using std::clog;
@@ -77,10 +78,10 @@ void MyScheduler::resourceOffers(SchedulerDriver* driver, const std::vector<Offe
 
     for (size_t i = 0; i < offers.size(); i++) {
         const Offer& offer = offers[i];
-        vector<TaskInfo> tasks;
         Resources remaining = offer.resources();
 
         while (tasksLaunched_ < totalTasks && TASK_RESOURCES <= remaining.flatten()) {
+            vector<TaskInfo> tasks;
             int taskId = tasksLaunched_++;
 
             clog << "Starting task " << taskId << " on " << offer.hostname() << endl;
@@ -91,6 +92,7 @@ void MyScheduler::resourceOffers(SchedulerDriver* driver, const std::vector<Offe
             task.mutable_task_id()->set_value(lexical_cast<string>(taskId));
             task.mutable_slave_id()->MergeFrom(offer.slave_id());
             task.mutable_executor()->MergeFrom(executor_);
+            task.set_data("Hello Task");
 
             // assigning resources this task may use
             Option<Resources> resources = remaining.find(TASK_RESOURCES, role_);
@@ -98,9 +100,10 @@ void MyScheduler::resourceOffers(SchedulerDriver* driver, const std::vector<Offe
             remaining -= resources.get();
 
             tasks.push_back(task);
-        }
 
-        driver->launchTasks(offer.id(), tasks);
+            driver->launchTasks(offer.id(), tasks);
+            sleep(1); // artificial delay for better visibility in the WebUI
+        }
     }
 }
 

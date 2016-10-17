@@ -1,5 +1,6 @@
 #include <mesos/executor.hpp>
 #include <iostream>
+#include <pthread.h>
 #include <unistd.h>
 
 using std::cout;
@@ -7,6 +8,30 @@ using std::clog;
 using std::endl;
 using std::string;
 using namespace mesos;
+
+struct _threaded {
+    pthread_t tid;
+    std::function<void()> run;
+
+    explicit _threaded(std::function<void()> fn) : tid(), run(fn) {}
+
+    static void* main(void* pself) {
+        _threaded* self = (_threaded*) pself;
+        self->run();
+        delete self;
+        return nullptr;
+    }
+};
+
+void threaded(std::function<void()> fn)
+{
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+
+    _threaded* thr = new _threaded(fn);
+    pthread_create(&thr->tid, &attr, &_threaded::main, thr);
+}
 
 class TestExecutor : public Executor {
 public:
@@ -38,21 +63,24 @@ public:
 
     void launchTask(ExecutorDriver* driver, const TaskInfo& task) override
     {
-        clog << "Starting task " << task.task_id().value() << endl;
+        threaded([=]() {
+            clog << "Starting task " << task.task_id().value() << endl;
 
-        TaskStatus status;
-        status.mutable_task_id()->MergeFrom(task.task_id());
+            TaskStatus status;
+            status.mutable_task_id()->MergeFrom(task.task_id());
 
-        status.set_state(TASK_RUNNING);
-        driver->sendStatusUpdate(status);
+            status.set_state(TASK_RUNNING);
+            driver->sendStatusUpdate(status);
 
-        // This is where one would perform the requested task.
-        sleep(5);
+            clog << "task data: '" << task.data() << "'" << endl;
 
-        clog << "Finishing task " << task.task_id().value() << endl;
+            // This is where one would perform the requested task.
+            sleep(5);
+            clog << "Finishing task " << task.task_id().value() << endl;
 
-        status.set_state(TASK_FINISHED);
-        driver->sendStatusUpdate(status);
+            status.set_state(TASK_FINISHED);
+            driver->sendStatusUpdate(status);
+        });
     }
 
     void killTask(ExecutorDriver* driver, const TaskID& taskId) override {
